@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CT Fair Rent Commission Case Prep Tool</title>
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -536,7 +538,10 @@
                 <div id="complaintOutput" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
                     <h3>Generated Complaint</h3>
                     <div id="complaintText"></div>
-                    <button class="btn" onclick="printComplaint()">Print Complaint</button>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="printComplaint()" style="margin-right: 10px;">Print Complaint</button>
+                        <button class="btn" onclick="downloadComplaintPDF()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52);">📄 Download PDF</button>
+                    </div>
                 </div>
             </div>
 
@@ -593,7 +598,10 @@
                 <div id="caseReportOutput" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
                     <h3>Generated Case Report</h3>
                     <div id="caseReportText"></div>
-                    <button class="btn" onclick="printCaseReport()">Print Report</button>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="printCaseReport()" style="margin-right: 10px;">Print Report</button>
+                        <button class="btn" onclick="downloadCaseReportPDF()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52);">📄 Download PDF</button>
+                    </div>
                 </div>
             </div>
 
@@ -1336,6 +1344,289 @@
         showSaveIndicator();
     };
 
+    // PDF Generation Class
+    class PDFGenerator {
+        constructor() {
+            this.doc = null;
+            this.yPosition = 20;
+            this.margin = 20;
+            this.pageWidth = 210; // A4 width in mm
+            this.pageHeight = 297; // A4 height in mm
+        }
+
+        initDocument() {
+            this.doc = new jsPDF();
+            this.yPosition = 20;
+        }
+
+        addTitle(title) {
+            this.doc.setFontSize(16);
+            this.doc.setFont(undefined, 'bold');
+            this.doc.text(title, this.margin, this.yPosition);
+            this.yPosition += 15;
+        }
+
+        addHeading(heading) {
+            this.checkPageBreak(15);
+            this.doc.setFontSize(12);
+            this.doc.setFont(undefined, 'bold');
+            this.doc.text(heading, this.margin, this.yPosition);
+            this.yPosition += 10;
+        }
+
+        addText(text, indent = 0) {
+            this.doc.setFontSize(10);
+            this.doc.setFont(undefined, 'normal');
+            
+            const maxWidth = this.pageWidth - (this.margin * 2) - indent;
+            const lines = this.doc.splitTextToSize(text, maxWidth);
+            
+            for (let line of lines) {
+                this.checkPageBreak(8);
+                this.doc.text(line, this.margin + indent, this.yPosition);
+                this.yPosition += 6;
+            }
+            this.yPosition += 3; // Extra spacing between paragraphs
+        }
+
+        addKeyValue(key, value, indent = 0) {
+            this.checkPageBreak(8);
+            this.doc.setFontSize(10);
+            this.doc.setFont(undefined, 'bold');
+            this.doc.text(key + ':', this.margin + indent, this.yPosition);
+            
+            this.doc.setFont(undefined, 'normal');
+            const keyWidth = this.doc.getTextWidth(key + ': ');
+            const maxWidth = this.pageWidth - (this.margin * 2) - indent - keyWidth;
+            const lines = this.doc.splitTextToSize(value, maxWidth);
+            
+            let isFirstLine = true;
+            for (let line of lines) {
+                if (!isFirstLine) {
+                    this.checkPageBreak(8);
+                    this.yPosition += 6;
+                }
+                this.doc.text(line, this.margin + indent + (isFirstLine ? keyWidth : 0), this.yPosition);
+                isFirstLine = false;
+            }
+            this.yPosition += 8;
+        }
+
+        addSeparator() {
+            this.checkPageBreak(10);
+            this.doc.setDrawColor(200, 200, 200);
+            this.doc.line(this.margin, this.yPosition, this.pageWidth - this.margin, this.yPosition);
+            this.yPosition += 10;
+        }
+
+        checkPageBreak(requiredSpace) {
+            if (this.yPosition + requiredSpace > this.pageHeight - 20) {
+                this.doc.addPage();
+                this.yPosition = 20;
+            }
+        }
+
+        addSignatureLine() {
+            this.checkPageBreak(30);
+            this.yPosition += 10;
+            this.doc.setFontSize(10);
+            this.doc.setFont(undefined, 'normal');
+            this.doc.text('Date: _______________', this.margin, this.yPosition);
+            this.yPosition += 15;
+            this.doc.text('Signature: _________________________________', this.margin, this.yPosition);
+        }
+
+        save(filename) {
+            this.doc.save(filename);
+        }
+    }
+
+    function downloadComplaintPDF() {
+        try {
+            const generator = new PDFGenerator();
+            generator.initDocument();
+
+            // Title
+            generator.addTitle('FAIR RENT COMMISSION COMPLAINT');
+            generator.yPosition += 5;
+
+            // Case Information
+            generator.addHeading('CASE INFORMATION');
+            generator.addKeyValue('Tenant', caseData.tenantName || '[Your Name]');
+            generator.addKeyValue('Property Address', caseData.propertyAddress || '[Property Address]');
+            generator.addKeyValue('Landlord', caseData.landlordName || '[Landlord Name]');
+            generator.addKeyValue('Current Monthly Rent', '$' + (caseData.currentRent || '[Current Rent]'));
+            generator.addKeyValue('Proposed Monthly Rent', '$' + (caseData.proposedRent || '[Proposed Rent]'));
+            generator.addKeyValue('Effective Date of Increase', caseData.rentIncreaseDate || '[Date]');
+
+            generator.addSeparator();
+
+            // Complaint Details
+            if (caseData.complaintSummary) {
+                generator.addHeading('COMPLAINT SUMMARY');
+                generator.addText(caseData.complaintSummary);
+            }
+
+            if (caseData.rentIncrease) {
+                generator.addHeading('RENT INCREASE DETAILS');
+                generator.addText(caseData.rentIncrease);
+            }
+
+            if (caseData.whyExcessive) {
+                generator.addHeading('WHY THE INCREASE IS EXCESSIVE');
+                generator.addText(caseData.whyExcessive);
+            }
+
+            // Financial Hardship Analysis
+            if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+                const analyzer = new FinancialHardshipAnalyzer(caseData);
+                const analysis = analyzer.calculateHardship();
+                if (analysis) {
+                    generator.addHeading('FINANCIAL HARDSHIP ANALYSIS');
+                    generator.addKeyValue('Current Rent Burden', analysis.currentBurden + '% of household income');
+                    generator.addKeyValue('Proposed Rent Burden', analysis.proposedBurden + '% of household income');
+                    generator.addKeyValue('Annual Rent Increase', '$' + analysis.annualIncrease.toLocaleString() + ' (' + analysis.increasePercent + '% increase)');
+                    generator.addKeyValue('Displacement Risk', analysis.displacementRisk);
+                    
+                    if (analysis.exceedsAffordable) {
+                        generator.addText('⚠️ This rent increase would exceed HUD affordability standards (30% of income).');
+                    }
+                }
+            }
+
+            if (caseData.reliefSought) {
+                generator.addHeading('RELIEF SOUGHT');
+                generator.addText(caseData.reliefSought);
+            }
+
+            generator.addSeparator();
+            generator.addText('Submitted on: ' + new Date().toLocaleDateString());
+            generator.addSignatureLine();
+
+            // Generate filename
+            const tenantName = caseData.tenantName || 'Tenant';
+            const propertyAddress = caseData.propertyAddress || 'Property';
+            const cleanName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
+            const cleanAddress = propertyAddress.split(' ')[0] || 'Address';
+            const filename = `FRC_Complaint_${cleanName}_${cleanAddress}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+            generator.save(filename);
+
+            // Show success message
+            showPDFSuccessMessage('Complaint downloaded successfully!');
+
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            alert('Error generating PDF. Please try again or use the print option.');
+        }
+    }
+
+    function downloadCaseReportPDF() {
+        try {
+            const generator = new PDFGenerator();
+            generator.initDocument();
+
+            // Title
+            const reportTitle = caseData.reportTitle || 'Fair Rent Commission Case Report';
+            generator.addTitle(reportTitle);
+            generator.yPosition += 5;
+
+            // Report Summary
+            if (caseData.reportSummary) {
+                generator.addHeading('EXECUTIVE SUMMARY');
+                generator.addText(caseData.reportSummary);
+            }
+
+            generator.addSeparator();
+
+            // Case Details
+            generator.addHeading('CASE DETAILS');
+            generator.addKeyValue('Tenant', caseData.tenantName || '[Your Name]');
+            generator.addKeyValue('Property Address', caseData.propertyAddress || '[Property Address]');
+            generator.addKeyValue('Landlord', caseData.landlordName || '[Landlord Name]');
+            generator.addKeyValue('Current Monthly Rent', '$' + (caseData.currentRent || '[Current Rent]'));
+            generator.addKeyValue('Proposed Monthly Rent', '$' + (caseData.proposedRent || '[Proposed Rent]'));
+            generator.addKeyValue('Effective Date of Increase', caseData.rentIncreaseDate || '[Date]');
+            generator.addKeyValue('Case Type', caseData.caseType || '[Case Type]');
+
+            // Evidence Analysis
+            const evidenceAnalyzer = new EvidenceAnalyzer();
+            const evidenceAnalysis = evidenceAnalyzer.analyzeEvidenceStrength(uploadedDocs, caseData);
+            
+            generator.addHeading('EVIDENCE STRENGTH ANALYSIS');
+            generator.addKeyValue('Evidence Score', evidenceAnalysis.strength + '% (' + evidenceAnalysis.score + ')');
+            
+            if (evidenceAnalysis.missingRequired.length > 0) {
+                generator.addKeyValue('Missing Required Documents', evidenceAnalysis.missingRequired.join(', '));
+            } else {
+                generator.addText('✓ All required documents collected');
+            }
+
+            // Financial Analysis
+            if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+                const analyzer = new FinancialHardshipAnalyzer(caseData);
+                const analysis = analyzer.calculateHardship();
+                if (analysis) {
+                    generator.addHeading('FINANCIAL HARDSHIP ANALYSIS');
+                    generator.addKeyValue('Current Rent Burden', analysis.currentBurden + '% of income');
+                    generator.addKeyValue('Proposed Rent Burden', analysis.proposedBurden + '% of income');
+                    generator.addKeyValue('Annual Rent Increase', '$' + analysis.annualIncrease.toLocaleString() + ' (' + analysis.increasePercent + '% increase)');
+                    generator.addKeyValue('Displacement Risk', analysis.displacementRisk);
+                }
+            }
+
+            // Timeline
+            if (timelineEvents.length > 0) {
+                generator.addHeading('TIMELINE OF EVENTS');
+                timelineEvents.forEach(event => {
+                    generator.addKeyValue(new Date(event.date).toLocaleDateString(), event.description);
+                });
+            }
+
+            // Documents
+            generator.addHeading('UPLOADED DOCUMENTS');
+            if (Object.keys(uploadedDocs).length > 0) {
+                Object.keys(uploadedDocs).forEach(doc => {
+                    generator.addText('• ' + doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1'));
+                });
+            } else {
+                generator.addText('No documents uploaded');
+            }
+
+            // Case Status
+            generator.addHeading('CASE PREPARATION STATUS');
+            generator.addKeyValue('Complaint Generated', document.getElementById('complaintOutput').style.display === 'block' ? 'Yes' : 'No');
+            generator.addKeyValue('Opening Statement Prepared', caseData.openingStatement ? 'Yes' : 'No');
+
+            generator.addSeparator();
+            generator.addText('Report generated on: ' + new Date().toLocaleDateString());
+
+            // Generate filename
+            const tenantName = caseData.tenantName || 'Tenant';
+            const cleanName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `FRC_Case_Report_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+            generator.save(filename);
+
+            // Show success message
+            showPDFSuccessMessage('Case report downloaded successfully!');
+
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            alert('Error generating PDF. Please try again or use the print option.');
+        }
+    }
+
+    function showPDFSuccessMessage(message) {
+        const indicator = document.createElement('div');
+        indicator.innerHTML = `📄 ${message}`;
+        indicator.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold;';
+        document.body.appendChild(indicator);
+        
+        setTimeout(() => indicator.style.opacity = '0', 3000);
+        setTimeout(() => document.body.removeChild(indicator), 3500);
+    }
+
     // Initialize the application
     document.addEventListener('DOMContentLoaded', function() {
         loadFromLocalStorage();
@@ -1350,11 +1641,12 @@
         clearButton.onclick = clearAllData;
         document.querySelector('.sidebar').appendChild(clearButton);
         
-        console.log('FRC Case Prep Tool v2.0 loaded with Phase 1 improvements:');
+        console.log('FRC Case Prep Tool v2.1 loaded with Phase 1+ improvements:');
         console.log('✓ Data persistence with localStorage');
         console.log('✓ Evidence strength analysis');
         console.log('✓ Financial hardship analysis');
         console.log('✓ Auto-save functionality');
+        console.log('✓ PDF generation for reports and complaints');
     });
 </script>
 ```
