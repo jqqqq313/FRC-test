@@ -340,8 +340,35 @@
                         <option value="retaliation">Retaliation</option>
                     </select>
                 </div>
+
+                <!-- Financial Information for Hardship Analysis -->
+                <h3 style="margin-top: 30px; color: #667eea;">Financial Information</h3>
+                <div class="alert">
+                    <strong>Note:</strong> This information helps calculate financial hardship and strengthen your case.
+                </div>
+                
+                <div class="form-group">
+                    <label for="monthlyIncome">Monthly Household Income (before taxes)</label>
+                    <input type="number" id="monthlyIncome" placeholder="4000">
+                </div>
+                
+                <div class="form-group">
+                    <label for="monthlyExpenses">Other Monthly Expenses (utilities, food, transportation, etc.)</label>
+                    <input type="number" id="monthlyExpenses" placeholder="1500">
+                </div>
+                
+                <div class="form-group">
+                    <label for="householdSize">Number of People in Household</label>
+                    <input type="number" id="householdSize" placeholder="2" min="1">
+                </div>
                 
                 <button class="btn" onclick="saveBasics()">Save Case Basics</button>
+                
+                <!-- Financial Hardship Analysis -->
+                <div id="hardshipAnalysis" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                    <h4>Financial Hardship Analysis</h4>
+                    <div id="hardshipResults"></div>
+                </div>
             </div>
 
             <!-- Document Collection Section -->
@@ -385,6 +412,74 @@
                             <input type="file" id="payments-file" style="display: none;" onchange="updateDocStatus('payments')">
                             <button class="btn" onclick="document.getElementById('payments-file').click()">Upload</button>
                         </div>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">Additional Supporting Documents</h3>
+                    <div class="document-item">
+                        <div>
+                            <strong>Comparable Rent Research</strong>
+                            <p>Documentation of similar units' rent in your area</p>
+                        </div>
+                        <div>
+                            <span class="status-badge status-needed" id="comparables-status">Optional</span>
+                            <input type="file" id="comparables-file" style="display: none;" onchange="updateDocStatus('comparables')">
+                            <button class="btn" onclick="document.getElementById('comparables-file').click()">Upload</button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div>
+                            <strong>Building Code Violations</strong>
+                            <p>Records of habitability issues or code violations</p>
+                        </div>
+                        <div>
+                            <span class="status-badge status-needed" id="violations-status">Optional</span>
+                            <input type="file" id="violations-file" style="display: none;" onchange="updateDocStatus('violations')">
+                            <button class="btn" onclick="document.getElementById('violations-file').click()">Upload</button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div>
+                            <strong>Income Documentation</strong>
+                            <p>Pay stubs, benefits statements, tax returns</p>
+                        </div>
+                        <div>
+                            <span class="status-badge status-needed" id="income-status">Optional</span>
+                            <input type="file" id="income-file" style="display: none;" onchange="updateDocStatus('income')">
+                            <button class="btn" onclick="document.getElementById('income-file').click()">Upload</button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div>
+                            <strong>Communication Records</strong>
+                            <p>Emails, letters, or texts with landlord about rent increase</p>
+                        </div>
+                        <div>
+                            <span class="status-badge status-needed" id="communications-status">Optional</span>
+                            <input type="file" id="communications-file" style="display: none;" onchange="updateDocStatus('communications')">
+                            <button class="btn" onclick="document.getElementById('communications-file').click()">Upload</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Evidence Strength Analysis -->
+                <div id="evidenceAnalysis" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                    <h3>Evidence Strength Analysis</h3>
+                    <div class="progress-bar" style="margin: 15px 0;">
+                        <div class="progress-fill" id="evidenceStrengthBar" style="width: 0%"></div>
+                    </div>
+                    <div id="evidenceStrengthText">Evidence Strength: 0%</div>
+                    
+                    <div id="evidenceRecommendations" style="margin-top: 15px;">
+                        <h4>Recommendations to Strengthen Your Case:</h4>
+                        <div id="recommendationsList"></div>
+                    </div>
+                    
+                    <div id="missingRequired" style="margin-top: 15px; display: none;">
+                        <h4 style="color: #c62828;">Missing Required Documents:</h4>
+                        <div id="missingRequiredList"></div>
                     </div>
                 </div>
             </div>
@@ -561,6 +656,172 @@
     let timelineEvents = [];
     let uploadedDocs = {};
 
+    // Phase 1: LocalStorage persistence
+    function saveToLocalStorage() {
+        const appData = {
+            caseData,
+            timelineEvents,
+            uploadedDocs,
+            lastSaved: new Date().toISOString()
+        };
+        localStorage.setItem('frcCaseData', JSON.stringify(appData));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem('frcCaseData');
+        if (saved) {
+            const appData = JSON.parse(saved);
+            caseData = appData.caseData || {};
+            timelineEvents = appData.timelineEvents || [];
+            uploadedDocs = appData.uploadedDocs || {};
+            
+            // Restore form data
+            restoreFormData();
+            renderTimeline();
+            updateAllAnalysis();
+        }
+    }
+
+    function restoreFormData() {
+        // Restore basic case info
+        if (caseData.tenantName) document.getElementById('tenantName').value = caseData.tenantName;
+        if (caseData.propertyAddress) document.getElementById('propertyAddress').value = caseData.propertyAddress;
+        if (caseData.landlordName) document.getElementById('landlordName').value = caseData.landlordName;
+        if (caseData.currentRent) document.getElementById('currentRent').value = caseData.currentRent;
+        if (caseData.proposedRent) document.getElementById('proposedRent').value = caseData.proposedRent;
+        if (caseData.rentIncreaseDate) document.getElementById('rentIncreaseDate').value = caseData.rentIncreaseDate;
+        if (caseData.caseType) document.getElementById('caseType').value = caseData.caseType;
+        
+        // Restore financial info
+        if (caseData.monthlyIncome) document.getElementById('monthlyIncome').value = caseData.monthlyIncome;
+        if (caseData.monthlyExpenses) document.getElementById('monthlyExpenses').value = caseData.monthlyExpenses;
+        if (caseData.householdSize) document.getElementById('householdSize').value = caseData.householdSize;
+        
+        // Restore document status
+        for (const [docType, uploaded] of Object.entries(uploadedDocs)) {
+            if (uploaded) {
+                const statusElement = document.getElementById(docType + '-status');
+                if (statusElement) {
+                    statusElement.textContent = 'Uploaded';
+                    statusElement.classList.remove('status-needed');
+                    statusElement.classList.add('status-uploaded');
+                }
+            }
+        }
+    }
+
+    // Phase 1: Evidence Strength Analyzer
+    class EvidenceAnalyzer {
+        constructor() {
+            this.evidenceTypes = {
+                'lease': { weight: 10, required: true, name: 'Current Lease Agreement' },
+                'notice': { weight: 10, required: true, name: 'Rent Increase Notice' },
+                'payments': { weight: 8, required: true, name: 'Proof of Current Rent Payments' },
+                'comparables': { weight: 9, required: false, name: 'Comparable Rent Research' },
+                'violations': { weight: 8, required: false, name: 'Building Code Violations' },
+                'income': { weight: 7, required: false, name: 'Income Documentation' },
+                'communications': { weight: 6, required: false, name: 'Communication Records' }
+            };
+        }
+        
+        analyzeEvidenceStrength(uploadedEvidence, caseData) {
+            let totalScore = 0;
+            let maxPossibleScore = 0;
+            let missingRequired = [];
+            let recommendations = [];
+            
+            for (const [type, config] of Object.entries(this.evidenceTypes)) {
+                maxPossibleScore += config.weight;
+                
+                if (uploadedEvidence[type]) {
+                    totalScore += config.weight;
+                } else {
+                    if (config.required) {
+                        missingRequired.push(config.name);
+                    } else {
+                        recommendations.push(this.getRecommendation(type, config.name, caseData));
+                    }
+                }
+            }
+            
+            return {
+                strength: Math.round((totalScore / maxPossibleScore) * 100),
+                missingRequired,
+                recommendations: recommendations.filter(r => r),
+                score: `${totalScore}/${maxPossibleScore}`
+            };
+        }
+        
+        getRecommendation(type, name, caseData) {
+            const recommendations = {
+                'comparables': 'Research similar rental units in your area to prove the increase is above market rate.',
+                'violations': 'Document any habitability issues or code violations to strengthen your case.',
+                'income': 'Provide income documentation to demonstrate financial hardship.',
+                'communications': 'Include all correspondence with your landlord about the rent increase.'
+            };
+            
+            return recommendations[type] ? { type, name, text: recommendations[type] } : null;
+        }
+    }
+
+    // Phase 1: Financial Hardship Analyzer
+    class FinancialHardshipAnalyzer {
+        constructor(caseData) {
+            this.income = parseFloat(caseData.monthlyIncome) || 0;
+            this.currentRent = parseFloat(caseData.currentRent) || 0;
+            this.proposedRent = parseFloat(caseData.proposedRent) || 0;
+            this.otherExpenses = parseFloat(caseData.monthlyExpenses) || 0;
+            this.householdSize = parseInt(caseData.householdSize) || 1;
+        }
+        
+        calculateHardship() {
+            if (!this.income || !this.currentRent || !this.proposedRent) {
+                return null;
+            }
+            
+            const currentRentBurden = (this.currentRent / this.income) * 100;
+            const proposedRentBurden = (this.proposedRent / this.income) * 100;
+            const increase = this.proposedRent - this.currentRent;
+            const increasePercent = ((this.proposedRent - this.currentRent) / this.currentRent) * 100;
+            
+            return {
+                currentBurden: currentRentBurden.toFixed(1),
+                proposedBurden: proposedRentBurden.toFixed(1),
+                exceedsAffordable: proposedRentBurden > 30,
+                exceedsSeverelyBurdened: proposedRentBurden > 50,
+                annualIncrease: increase * 12,
+                increasePercent: increasePercent.toFixed(1),
+                displacementRisk: this.assessDisplacementRisk(),
+                recommendations: this.getRecommendations(proposedRentBurden, increasePercent)
+            };
+        }
+        
+        assessDisplacementRisk() {
+            const disposableIncome = this.income - this.currentRent - this.otherExpenses;
+            const increaseAmount = this.proposedRent - this.currentRent;
+            
+            if (increaseAmount > disposableIncome) return 'High';
+            if (increaseAmount > disposableIncome * 0.7) return 'Medium';
+            return 'Low';
+        }
+        
+        getRecommendations(proposedBurden, increasePercent) {
+            const recs = [];
+            
+            if (proposedBurden > 30) {
+                recs.push('Rent burden exceeds HUD affordability standards (30% of income)');
+            }
+            if (proposedBurden > 50) {
+                recs.push('Severely rent-burdened - risk of displacement is high');
+            }
+            if (increasePercent > 10) {
+                recs.push('Rent increase percentage is significantly above typical annual increases');
+            }
+            
+            return recs;
+        }
+    }
+
     function showSection(sectionId) {
         // Hide all sections
         document.querySelectorAll('.section').forEach(section => {
@@ -578,11 +839,12 @@
         // Add active class to clicked button
         event.target.classList.add('active');
         
-        // Update progress
-        updateProgress();
+        // Update progress and analysis
+        updateAllAnalysis();
     }
 
     function saveBasics() {
+        // Save basic case info
         caseData.tenantName = document.getElementById('tenantName').value;
         caseData.propertyAddress = document.getElementById('propertyAddress').value;
         caseData.landlordName = document.getElementById('landlordName').value;
@@ -591,9 +853,53 @@
         caseData.rentIncreaseDate = document.getElementById('rentIncreaseDate').value;
         caseData.caseType = document.getElementById('caseType').value;
         
+        // Save financial info
+        caseData.monthlyIncome = document.getElementById('monthlyIncome').value;
+        caseData.monthlyExpenses = document.getElementById('monthlyExpenses').value;
+        caseData.householdSize = document.getElementById('householdSize').value;
+        
+        // Perform financial hardship analysis
+        performFinancialAnalysis();
+        
+        // Save to localStorage
+        saveToLocalStorage();
+        
         alert('Case basics saved successfully!');
-        updateProgress();
+        updateAllAnalysis();
         showSection('documents'); // Auto-advance to documents
+    }
+
+    function performFinancialAnalysis() {
+        const analyzer = new FinancialHardshipAnalyzer(caseData);
+        const analysis = analyzer.calculateHardship();
+        
+        if (analysis) {
+            const hardshipDiv = document.getElementById('hardshipAnalysis');
+            const resultsDiv = document.getElementById('hardshipResults');
+            
+            resultsDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                    <div>
+                        <strong>Current Rent Burden:</strong> ${analysis.currentBurden}%<br>
+                        <strong>Proposed Rent Burden:</strong> ${analysis.proposedBurden}%<br>
+                        <strong>Annual Increase:</strong> $${analysis.annualIncrease.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Increase Percentage:</strong> ${analysis.increasePercent}%<br>
+                        <strong>Displacement Risk:</strong> ${analysis.displacementRisk}<br>
+                        <strong>Exceeds HUD Standard:</strong> ${analysis.exceedsAffordable ? 'Yes' : 'No'}
+                    </div>
+                </div>
+                ${analysis.recommendations.length > 0 ? `
+                    <div class="alert">
+                        <strong>Financial Impact Analysis:</strong><br>
+                        ${analysis.recommendations.map(rec => `• ${rec}`).join('<br>')}
+                    </div>
+                ` : ''}
+            `;
+            
+            hardshipDiv.style.display = 'block';
+        }
     }
 
     function updateDocStatus(docType) {
@@ -603,7 +909,65 @@
         statusElement.classList.add('status-uploaded');
         
         uploadedDocs[docType] = true;
+        
+        // Save to localStorage and update analysis
+        saveToLocalStorage();
+        updateEvidenceAnalysis();
         updateProgress();
+    }
+
+    function updateEvidenceAnalysis() {
+        const analyzer = new EvidenceAnalyzer();
+        const analysis = analyzer.analyzeEvidenceStrength(uploadedDocs, caseData);
+        
+        // Update strength bar
+        const strengthBar = document.getElementById('evidenceStrengthBar');
+        const strengthText = document.getElementById('evidenceStrengthText');
+        
+        strengthBar.style.width = analysis.strength + '%';
+        strengthText.textContent = `Evidence Strength: ${analysis.strength}% (${analysis.score})`;
+        
+        // Color code the strength bar
+        if (analysis.strength >= 80) {
+            strengthBar.style.background = 'linear-gradient(45deg, #4caf50, #8bc34a)';
+        } else if (analysis.strength >= 60) {
+            strengthBar.style.background = 'linear-gradient(45deg, #ff9800, #ffc107)';
+        } else {
+            strengthBar.style.background = 'linear-gradient(45deg, #f44336, #e91e63)';
+        }
+        
+        // Show missing required documents
+        const missingDiv = document.getElementById('missingRequired');
+        const missingList = document.getElementById('missingRequiredList');
+        
+        if (analysis.missingRequired.length > 0) {
+            missingList.innerHTML = analysis.missingRequired.map(doc => 
+                `<div class="alert" style="background: #ffebee; border-left-color: #c62828; margin: 5px 0;">• ${doc}</div>`
+            ).join('');
+            missingDiv.style.display = 'block';
+        } else {
+            missingDiv.style.display = 'none';
+        }
+        
+        // Show recommendations
+        const recommendationsList = document.getElementById('recommendationsList');
+        if (analysis.recommendations.length > 0) {
+            recommendationsList.innerHTML = analysis.recommendations.map(rec => 
+                `<div class="alert" style="margin: 5px 0;">
+                    <strong>${rec.name}:</strong> ${rec.text}
+                </div>`
+            ).join('');
+        } else {
+            recommendationsList.innerHTML = '<div class="alert">Your evidence is complete! Consider gathering additional supporting documentation to strengthen your case further.</div>';
+        }
+    }
+
+    function updateAllAnalysis() {
+        updateProgress();
+        updateEvidenceAnalysis();
+        if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+            performFinancialAnalysis();
+        }
     }
 
     function addTimelineEvent() {
@@ -628,6 +992,9 @@
         // Clear form
         document.getElementById('eventDate').value = '';
         document.getElementById('eventDescription').value = '';
+        
+        // Save to localStorage
+        saveToLocalStorage();
         updateProgress();
     }
 
@@ -650,6 +1017,7 @@
     function removeTimelineEvent(index) {
         timelineEvents.splice(index, 1);
         renderTimeline();
+        saveToLocalStorage();
         updateProgress();
     }
 
@@ -662,6 +1030,29 @@
         if (!summary || !rentIncrease || !whyExcessive || !reliefSought) {
             alert('Please fill in all complaint fields');
             return;
+        }
+
+        // Save complaint data
+        caseData.complaintSummary = summary;
+        caseData.rentIncrease = rentIncrease;
+        caseData.whyExcessive = whyExcessive;
+        caseData.reliefSought = reliefSought;
+        
+        // Include financial hardship analysis in complaint if available
+        let hardshipSection = '';
+        if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+            const analyzer = new FinancialHardshipAnalyzer(caseData);
+            const analysis = analyzer.calculateHardship();
+            if (analysis) {
+                hardshipSection = `
+                    <h5>FINANCIAL HARDSHIP ANALYSIS:</h5>
+                    <p>Current rent burden: ${analysis.currentBurden}% of household income</p>
+                    <p>Proposed rent burden: ${analysis.proposedBurden}% of household income</p>
+                    <p>Annual rent increase: $${analysis.annualIncrease.toLocaleString()} (${analysis.increasePercent}% increase)</p>
+                    <p>Displacement risk: ${analysis.displacementRisk}</p>
+                    ${analysis.exceedsAffordable ? '<p><strong>This rent increase would exceed HUD affordability standards (30% of income).</strong></p>' : ''}
+                `;
+            }
         }
         
         const complaintText = `
@@ -682,6 +1073,8 @@
             <h5>WHY THE INCREASE IS EXCESSIVE:</h5>
             <p>${whyExcessive}</p>
             
+            ${hardshipSection}
+            
             <h5>RELIEF SOUGHT:</h5>
             <p>${reliefSought}</p>
             
@@ -691,6 +1084,8 @@
         
         document.getElementById('complaintText').innerHTML = complaintText;
         document.getElementById('complaintOutput').style.display = 'block';
+        
+        saveToLocalStorage();
         updateProgress();
         showSection('preparation'); // Auto-advance to preparation
     }
@@ -719,6 +1114,8 @@
         const openingStatement = document.getElementById('openingStatement').value;
         
         if (openingStatement) {
+            caseData.openingStatement = openingStatement;
+            saveToLocalStorage();
             alert('Hearing preparation saved successfully!');
             updateProgress();
             showSection('report'); // Auto-advance to report
@@ -736,9 +1133,34 @@
             return;
         }
 
+        // Save report data
+        caseData.reportTitle = reportTitle;
+        caseData.reportSummary = reportSummary;
+
+        // Include evidence analysis
+        const evidenceAnalyzer = new EvidenceAnalyzer();
+        const evidenceAnalysis = evidenceAnalyzer.analyzeEvidenceStrength(uploadedDocs, caseData);
+
+        // Include financial analysis if available
+        let financialSection = '';
+        if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+            const analyzer = new FinancialHardshipAnalyzer(caseData);
+            const analysis = analyzer.calculateHardship();
+            if (analysis) {
+                financialSection = `
+                    <h5>Financial Hardship Analysis:</h5>
+                    <p><strong>Current Rent Burden:</strong> ${analysis.currentBurden}% of income</p>
+                    <p><strong>Proposed Rent Burden:</strong> ${analysis.proposedBurden}% of income</p>
+                    <p><strong>Rent Increase:</strong> $${analysis.annualIncrease.toLocaleString()} annually (${analysis.increasePercent}%)</p>
+                    <p><strong>Displacement Risk:</strong> ${analysis.displacementRisk}</p>
+                `;
+            }
+        }
+
         const reportText = `
             <h4>${reportTitle}</h4>
             <p>${reportSummary}</p>
+            
             <h5>Case Details:</h5>
             <p><strong>Tenant:</strong> ${caseData.tenantName || '[Your Name]'}</p>
             <p><strong>Property Address:</strong> ${caseData.propertyAddress || '[Property Address]'}</p>
@@ -748,25 +1170,42 @@
             <p><strong>Increase Date:</strong> ${caseData.rentIncreaseDate || '[Date]'}</p>
             <p><strong>Case Type:</strong> ${caseData.caseType || '[Case Type]'}</p>
 
-            <h5>Timeline:</h5>
+            <h5>Evidence Strength Analysis:</h5>
+            <p><strong>Evidence Score:</strong> ${evidenceAnalysis.strength}% (${evidenceAnalysis.score})</p>
+            ${evidenceAnalysis.missingRequired.length > 0 ? 
+                `<p><strong>Missing Required Documents:</strong> ${evidenceAnalysis.missingRequired.join(', ')}</p>` : 
+                '<p><strong>All required documents collected</strong></p>'
+            }
+
+            ${financialSection}
+
+            <h5>Timeline of Events:</h5>
             ${timelineEvents.length > 0 ? timelineEvents.map(event => `
                 <p><strong>${new Date(event.date).toLocaleDateString()}:</strong> ${event.description}</p>
-            `).join('')}
+            `).join('') : '<p>No timeline events recorded</p>'}
 
-            <h5>Documents:</h5>
+            <h5>Uploaded Documents:</h5>
             ${Object.keys(uploadedDocs).length > 0 ? Object.keys(uploadedDocs).map(doc => `
-                <p><strong>${doc.charAt(0).toUpperCase() + doc.slice(1)}:</strong> Uploaded</p>
-            `).join('')}
+                <p>• ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1')}</p>
+            `).join('') : '<p>No documents uploaded</p>'}
 
-            <h5>Complaint:</h5>
-            ${document.getElementById('complaintOutput').style.display === 'block' ? document.getElementById('complaintText').innerHTML : 'Not generated yet.'}
+            <h5>Generated Complaint:</h5>
+            ${document.getElementById('complaintOutput').style.display === 'block' ? 
+                'Complaint form has been generated and is ready for submission.' : 
+                'Complaint form not yet generated.'
+            }
 
             <h5>Hearing Preparation:</h5>
-            ${document.getElementById('preparation').classList.contains('active') ? document.getElementById('openingStatement').value : 'Not prepared yet.'}
+            ${caseData.openingStatement ? 
+                `<p>Opening statement prepared: "${caseData.openingStatement.substring(0, 100)}..."</p>` : 
+                '<p>Opening statement not yet prepared.</p>'
+            }
         `;
 
         document.getElementById('caseReportText').innerHTML = reportText;
         document.getElementById('caseReportOutput').style.display = 'block';
+        
+        saveToLocalStorage();
         updateProgress();
     }
 
@@ -792,15 +1231,17 @@
 
     function updateProgress() {
         let completedItems = 0;
-        let totalItems = 7; // Updated total items
+        let totalItems = 7;
         
-        // Check if basics are filled
+        // Check if basics are filled (including financial info)
         if (caseData.tenantName && caseData.propertyAddress && caseData.currentRent && caseData.proposedRent) {
             completedItems++;
         }
         
-        // Check if any documents are uploaded
-        if (Object.keys(uploadedDocs).length > 0) {
+        // Check if required documents are uploaded
+        const requiredDocs = ['lease', 'notice', 'payments'];
+        const hasRequiredDocs = requiredDocs.every(doc => uploadedDocs[doc]);
+        if (hasRequiredDocs) {
             completedItems++;
         }
         
@@ -814,13 +1255,8 @@
             completedItems++;
         }
         
-        // Check if hearing prep checkboxes are checked
-        const checkboxes = document.querySelectorAll('#preparation input[type="checkbox"]');
-        let checkedCount = 0;
-        checkboxes.forEach(checkbox => {
-            if (checkbox.checked) checkedCount++;
-        });
-        if (checkedCount > 0) {
+        // Check if hearing prep is done
+        if (caseData.openingStatement) {
             completedItems++;
         }
 
@@ -837,8 +1273,89 @@
         document.getElementById('progressText').textContent = progressPercent + '% Complete';
     }
 
-    // Initialize progress on page load
-    updateProgress();
+    // Clear all data function
+    function clearAllData() {
+        if (confirm('Are you sure you want to clear all case data? This cannot be undone.')) {
+            localStorage.removeItem('frcCaseData');
+            location.reload();
+        }
+    }
+
+    // Add real-time saving for form inputs
+    function setupAutoSave() {
+        const inputs = ['tenantName', 'propertyAddress', 'landlordName', 'currentRent', 'proposedRent', 'rentIncreaseDate', 'caseType', 'monthlyIncome', 'monthlyExpenses', 'householdSize'];
+        
+        inputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', function() {
+                    caseData[inputId] = this.value;
+                    saveToLocalStorage();
+                    
+                    // Update financial analysis in real-time if relevant fields change
+                    if (['monthlyIncome', 'currentRent', 'proposedRent', 'monthlyExpenses'].includes(inputId)) {
+                        if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+                            performFinancialAnalysis();
+                        }
+                    }
+                });
+            }
+        });
+
+        // Auto-save textarea fields
+        const textareas = ['complaintSummary', 'rentIncrease', 'whyExcessive', 'reliefSought', 'openingStatement', 'reportTitle', 'reportSummary'];
+        textareas.forEach(textareaId => {
+            const element = document.getElementById(textareaId);
+            if (element) {
+                element.addEventListener('input', function() {
+                    caseData[textareaId] = this.value;
+                    saveToLocalStorage();
+                });
+            }
+        });
+    }
+
+    // Add a save indicator
+    function showSaveIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'saveIndicator';
+        indicator.innerHTML = '✓ Data saved automatically';
+        indicator.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 10px 15px; border-radius: 5px; z-index: 1000; opacity: 0; transition: opacity 0.3s;';
+        document.body.appendChild(indicator);
+        
+        // Show and hide the indicator
+        setTimeout(() => indicator.style.opacity = '1', 100);
+        setTimeout(() => indicator.style.opacity = '0', 2000);
+        setTimeout(() => document.body.removeChild(indicator), 2500);
+    }
+
+    // Override saveToLocalStorage to show indicator
+    const originalSaveToLocalStorage = saveToLocalStorage;
+    saveToLocalStorage = function() {
+        originalSaveToLocalStorage();
+        showSaveIndicator();
+    };
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', function() {
+        loadFromLocalStorage();
+        setupAutoSave();
+        updateAllAnalysis();
+        
+        // Add clear data button to sidebar
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear All Data';
+        clearButton.className = 'btn';
+        clearButton.style.cssText = 'background: #dc3545; margin-top: 20px; width: 100%;';
+        clearButton.onclick = clearAllData;
+        document.querySelector('.sidebar').appendChild(clearButton);
+        
+        console.log('FRC Case Prep Tool v2.0 loaded with Phase 1 improvements:');
+        console.log('✓ Data persistence with localStorage');
+        console.log('✓ Evidence strength analysis');
+        console.log('✓ Financial hardship analysis');
+        console.log('✓ Auto-save functionality');
+    });
 </script>
 ```
 
