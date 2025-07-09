@@ -280,7 +280,8 @@
             <button class="nav-btn" onclick="showSection('timeline')">3. Timeline Builder</button>
             <button class="nav-btn" onclick="showSection('complaint')">4. Complaint Form</button>
             <button class="nav-btn" onclick="showSection('preparation')">5. Hearing Preparation</button>
-            <button class="nav-btn" onclick="showSection('resources')">6. Resources</button>
+            <button class="nav-btn" onclick="showSection('report')">6. Case Report</button>
+            <button class="nav-btn" onclick="showSection('resources')">7. Resources</button>
             
             <div style="margin-top: 30px;">
                 <h4>Case Progress</h4>
@@ -477,6 +478,30 @@
                 <button class="btn" onclick="saveHearingPrep()">Save Hearing Preparation</button>
             </div>
 
+            <!-- Case Report Section -->
+            <div id="report" class="section">
+                <h2>Case Report</h2>
+                <p>Generate a comprehensive report of your case for submission to the Fair Rent Commission.</p>
+                
+                <div class="form-group">
+                    <label for="reportTitle">Report Title</label>
+                    <input type="text" id="reportTitle" placeholder="e.g., Rent Increase Dispute Report">
+                </div>
+                
+                <div class="form-group">
+                    <label for="reportSummary">Report Summary</label>
+                    <textarea id="reportSummary" placeholder="A brief summary of the case, including key points and findings."></textarea>
+                </div>
+                
+                <button class="btn" onclick="generateCaseReport()">Generate Case Report</button>
+                
+                <div id="caseReportOutput" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                    <h3>Generated Case Report</h3>
+                    <div id="caseReportText"></div>
+                    <button class="btn" onclick="printCaseReport()">Print Report</button>
+                </div>
+            </div>
+
             <!-- Resources Section -->
             <div id="resources" class="section">
                 <h2>Resources & Information</h2>
@@ -568,6 +593,7 @@
         
         alert('Case basics saved successfully!');
         updateProgress();
+        showSection('documents'); // Auto-advance to documents
     }
 
     function updateDocStatus(docType) {
@@ -666,6 +692,7 @@
         document.getElementById('complaintText').innerHTML = complaintText;
         document.getElementById('complaintOutput').style.display = 'block';
         updateProgress();
+        showSection('preparation'); // Auto-advance to preparation
     }
 
     function printComplaint() {
@@ -694,14 +721,78 @@
         if (openingStatement) {
             alert('Hearing preparation saved successfully!');
             updateProgress();
+            showSection('report'); // Auto-advance to report
         } else {
             alert('Please add some content before saving');
         }
     }
 
+    function generateCaseReport() {
+        const reportTitle = document.getElementById('reportTitle').value;
+        const reportSummary = document.getElementById('reportSummary').value;
+
+        if (!reportTitle || !reportSummary) {
+            alert('Please fill in both report title and summary');
+            return;
+        }
+
+        const reportText = `
+            <h4>${reportTitle}</h4>
+            <p>${reportSummary}</p>
+            <h5>Case Details:</h5>
+            <p><strong>Tenant:</strong> ${caseData.tenantName || '[Your Name]'}</p>
+            <p><strong>Property Address:</strong> ${caseData.propertyAddress || '[Property Address]'}</p>
+            <p><strong>Landlord:</strong> ${caseData.landlordName || '[Landlord Name]'}</p>
+            <p><strong>Current Rent:</strong> $${caseData.currentRent || '[Current Rent]'}</p>
+            <p><strong>Proposed Rent:</strong> $${caseData.proposedRent || '[Proposed Rent]'}</p>
+            <p><strong>Increase Date:</strong> ${caseData.rentIncreaseDate || '[Date]'}</p>
+            <p><strong>Case Type:</strong> ${caseData.caseType || '[Case Type]'}</p>
+
+            <h5>Timeline:</h5>
+            ${timelineEvents.length > 0 ? timelineEvents.map(event => `
+                <p><strong>${new Date(event.date).toLocaleDateString()}:</strong> ${event.description}</p>
+            `).join('')}
+
+            <h5>Documents:</h5>
+            ${Object.keys(uploadedDocs).length > 0 ? Object.keys(uploadedDocs).map(doc => `
+                <p><strong>${doc.charAt(0).toUpperCase() + doc.slice(1)}:</strong> Uploaded</p>
+            `).join('')}
+
+            <h5>Complaint:</h5>
+            ${document.getElementById('complaintOutput').style.display === 'block' ? document.getElementById('complaintText').innerHTML : 'Not generated yet.'}
+
+            <h5>Hearing Preparation:</h5>
+            ${document.getElementById('preparation').classList.contains('active') ? document.getElementById('openingStatement').value : 'Not prepared yet.'}
+        `;
+
+        document.getElementById('caseReportText').innerHTML = reportText;
+        document.getElementById('caseReportOutput').style.display = 'block';
+        updateProgress();
+    }
+
+    function printCaseReport() {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Fair Rent Commission Case Report</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h4, h5 { color: #333; }
+                        p { margin: 10px 0; }
+                    </style>
+                </head>
+                <body>
+                    ${document.getElementById('caseReportText').innerHTML}
+                </body>
+            </html>
+        `);
+        printWindow.print();
+    }
+
     function updateProgress() {
         let completedItems = 0;
-        let totalItems = 6;
+        let totalItems = 7; // Updated total items
         
         // Check if basics are filled
         if (caseData.tenantName && caseData.propertyAddress && caseData.currentRent && caseData.proposedRent) {
@@ -730,6 +821,11 @@
             if (checkbox.checked) checkedCount++;
         });
         if (checkedCount > 0) {
+            completedItems++;
+        }
+
+        // Check if report is generated
+        if (document.getElementById('caseReportOutput').style.display === 'block') {
             completedItems++;
         }
         
