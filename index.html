@@ -366,7 +366,10 @@
                     <input type="number" id="householdSize" placeholder="2" min="1">
                 </div>
                 
-                <button class="btn" onclick="saveBasics()">Save Case Basics</button>
+                <div style="margin-top: 20px;">
+                    <button class="btn" onclick="saveBasics()">Save Case Basics</button>
+                    <button class="btn" onclick="testSave()" style="background: #17a2b8; margin-left: 10px; font-size: 14px;">🔧 Test Save (Debug)</button>
+                </div>
                 
                 <!-- Financial Hardship Analysis -->
                 <div id="hardshipAnalysis" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
@@ -1298,29 +1301,106 @@
     }
 
     function saveBasics() {
-        // Save basic case info
-        caseData.tenantName = document.getElementById('tenantName').value;
-        caseData.propertyAddress = document.getElementById('propertyAddress').value;
-        caseData.landlordName = document.getElementById('landlordName').value;
-        caseData.currentRent = document.getElementById('currentRent').value;
-        caseData.proposedRent = document.getElementById('proposedRent').value;
-        caseData.rentIncreaseDate = document.getElementById('rentIncreaseDate').value;
-        caseData.caseType = document.getElementById('caseType').value;
-        
-        // Save financial info
-        caseData.monthlyIncome = document.getElementById('monthlyIncome').value;
-        caseData.monthlyExpenses = document.getElementById('monthlyExpenses').value;
-        caseData.householdSize = document.getElementById('householdSize').value;
-        
-        // Perform financial hardship analysis
-        performFinancialAnalysis();
-        
-        // Save to localStorage
-        saveToLocalStorage();
-        
-        alert('Case basics saved successfully!');
-        updateAllAnalysis();
-        showSection('documents'); // Auto-advance to documents
+        try {
+            console.log('saveBasics() function called');
+            
+            // Check if required elements exist
+            const requiredFields = ['tenantName', 'propertyAddress', 'landlordName', 'currentRent', 'proposedRent', 'rentIncreaseDate', 'caseType'];
+            const missingFields = [];
+            
+            for (const fieldId of requiredFields) {
+                if (!document.getElementById(fieldId)) {
+                    missingFields.push(fieldId);
+                }
+            }
+            
+            if (missingFields.length > 0) {
+                console.error('Missing form fields:', missingFields);
+                alert('Error: Some form fields are missing. Please refresh the page and try again.');
+                return;
+            }
+            
+            // Save basic case info
+            caseData.tenantName = document.getElementById('tenantName').value;
+            caseData.propertyAddress = document.getElementById('propertyAddress').value;
+            caseData.landlordName = document.getElementById('landlordName').value;
+            caseData.currentRent = document.getElementById('currentRent').value;
+            caseData.proposedRent = document.getElementById('proposedRent').value;
+            caseData.rentIncreaseDate = document.getElementById('rentIncreaseDate').value;
+            caseData.caseType = document.getElementById('caseType').value;
+            
+            // Save financial info (optional fields)
+            const monthlyIncomeEl = document.getElementById('monthlyIncome');
+            const monthlyExpensesEl = document.getElementById('monthlyExpenses');
+            const householdSizeEl = document.getElementById('householdSize');
+            
+            if (monthlyIncomeEl) caseData.monthlyIncome = monthlyIncomeEl.value;
+            if (monthlyExpensesEl) caseData.monthlyExpenses = monthlyExpensesEl.value;
+            if (householdSizeEl) caseData.householdSize = householdSizeEl.value;
+            
+            console.log('Case data saved:', caseData);
+            
+            // Perform financial hardship analysis
+            try {
+                performFinancialAnalysis();
+            } catch (error) {
+                console.error('Error in financial analysis:', error);
+            }
+            
+            // Save to localStorage
+            try {
+                saveToLocalStorage();
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+            
+            alert('Case basics saved successfully!');
+            
+            try {
+                updateAllAnalysis();
+            } catch (error) {
+                console.error('Error updating analysis:', error);
+            }
+            
+            try {
+                showSection('documents'); // Auto-advance to documents
+            } catch (error) {
+                console.error('Error showing documents section:', error);
+            }
+            
+        } catch (error) {
+            console.error('Error in saveBasics():', error);
+            alert('An error occurred while saving. Please check the browser console for details and try again.');
+        }
+    }
+
+    // Test function for debugging
+    function testSave() {
+        try {
+            alert('Test function working! Now checking form fields...');
+            
+            const tenantName = document.getElementById('tenantName');
+            const currentRent = document.getElementById('currentRent');
+            
+            if (!tenantName) {
+                alert('ERROR: tenantName field not found!');
+                return;
+            }
+            
+            if (!currentRent) {
+                alert('ERROR: currentRent field not found!');
+                return;
+            }
+            
+            alert(`Form fields found! Tenant name: "${tenantName.value}" Current rent: "${currentRent.value}"`);
+            
+            // Try the actual save function
+            saveBasics();
+            
+        } catch (error) {
+            alert('Error in test function: ' + error.message);
+            console.error('Test function error:', error);
+        }
     }
 
     function performFinancialAnalysis() {
@@ -2293,6 +2373,13 @@
         console.log('✓ Market analysis & comparable rent finder');
         console.log('✓ Legal precedent research database');
         console.log('✓ Enhanced narrative report generation');
+        
+        // Verify key components are loaded
+        console.log('Checking key functions...');
+        console.log('saveBasics function exists:', typeof saveBasics === 'function');
+        console.log('caseData object:', caseData);
+        console.log('tenantName field exists:', !!document.getElementById('tenantName'));
+        console.log('currentRent field exists:', !!document.getElementById('currentRent'));
     });
 </script>
 ```
