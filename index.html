@@ -1906,12 +1906,12 @@
 
             ${data.similarCases.length > 0 ? `
                 <h4>Similar Cases Found</h4>
-                ${data.similarCases.map(case => `
+                ${data.similarCases.map(caseItem => `
                     <div class="timeline-item" style="margin: 10px 0;">
-                        <strong>${case.case} (${case.year})</strong>
-                        <p><strong>Outcome:</strong> ${case.outcome}</p>
-                        <p><strong>Rent Increase:</strong> ${case.increase}%</p>
-                        <p><strong>Decision:</strong> ${case.decision}</p>
+                        <strong>${caseItem.case} (${caseItem.year})</strong>
+                        <p><strong>Outcome:</strong> ${caseItem.outcome}</p>
+                        <p><strong>Rent Increase:</strong> ${caseItem.increase}%</p>
+                        <p><strong>Decision:</strong> ${caseItem.decision}</p>
                     </div>
                 `).join('')}
             ` : ''}
