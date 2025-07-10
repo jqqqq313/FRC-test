@@ -1,6 +1,6 @@
 # Connecticut Fair Rent Commission Case Prep Tool
 
-A comprehensive web application to help Connecticut tenants prepare professional Fair Rent Commission (FRC) filings to challenge excessive rent increases.
+A comprehensive web application to help Connecticut tenants prepare professional Fair Rent Commission (FRC) filings to cha  llenge excessive rent increases.
 
 ## 🎯 Features
 
