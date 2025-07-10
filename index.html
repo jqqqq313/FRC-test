@@ -642,6 +642,7 @@
 let caseData = {};
 let timelineEvents = [];
 let uploadedDocs = {};
+let evidenceDetails = {};
 let currentMarketData = null;
 
 function saveBasics() {
@@ -654,7 +655,7 @@ function saveBasics() {
     caseData.caseType = document.getElementById('caseType').value;
     caseData.caseSummary = document.getElementById('caseSummary').value;
     
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
     alert('Case information saved successfully!');
     updateProgress();
     showSection('financial');
@@ -707,7 +708,7 @@ function analyzeFinancialImpact() {
     `;
     
     document.getElementById('financialAnalysisResults').style.display = 'block';
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
     updateProgress();
 }
 
@@ -735,9 +736,27 @@ function generateFRCFiling() {
     
     // Generate market analysis text if available
     let marketAnalysisText = 'Market analysis not completed - consider using the Market Analysis section to strengthen your case.';
+    let supportingComparables = '';
+    
     if (currentMarketData) {
         const vsMarket = currentMarketData.vsMarket || 0;
+        const proposedRent = parseFloat(caseData.proposedRent);
         marketAnalysisText = `Market analysis of comparable ${currentMarketData.propertyType} properties with ${currentMarketData.bedrooms} bedroom(s) shows the proposed rent is ${vsMarket > 0 ? vsMarket + '% above' : Math.abs(vsMarket) + '% below'} market average. ${vsMarket > 10 ? 'This significant deviation above market rates indicates the increase lacks justification based on current rental market conditions.' : 'The proposed rent appears consistent with local market conditions.'}`;
+        
+        // Include supporting comparable prices only if they support the case
+        if (vsMarket > 0 && currentMarketData.comparables) {
+            const supportingProps = currentMarketData.comparables.filter(prop => prop.rent < proposedRent);
+            if (supportingProps.length > 0) {
+                supportingComparables = `
+
+<strong>Comparable Properties Supporting This Case:</strong>
+${supportingProps.map(prop => 
+    `• ${prop.address}: $${prop.rent}/month (${prop.bedrooms === 0 ? 'Studio' : prop.bedrooms + ' bedroom'} ${currentMarketData.propertyType}, ${prop.distance} miles away) - $${(proposedRent - prop.rent).toFixed(0)} less than proposed rent`
+).join('\n')}
+
+These comparable properties demonstrate that similar units in the area rent for significantly less than the proposed amount, supporting the argument that the increase is excessive.`;
+            }
+        }
     }
     
     const filingContent = `
@@ -788,6 +807,12 @@ function generateFRCFiling() {
             <h4 style="color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 5px;">III. MARKET ANALYSIS</h4>
             <p style="line-height: 1.7; text-align: justify; margin: 15px 0;">${marketAnalysisText}</p>
             
+            ${supportingComparables ? `
+                <div style="margin-top: 15px; padding: 15px; background: #e8f5e8; border-radius: 5px; border-left: 4px solid #4caf50;">
+                    <p style="white-space: pre-line; margin: 0; line-height: 1.6;">${supportingComparables}</p>
+                </div>
+            ` : ''}
+            
             ${caseData.additionalComparables ? `
                 <div style="margin-top: 15px;">
                     <p><strong>Additional Comparable Properties Research:</strong></p>
@@ -832,9 +857,18 @@ function generateFRCFiling() {
             <p style="margin: 15px 0;">The following evidence is submitted in support of this filing:</p>
             <div style="margin: 15px 0;">
                 ${Object.keys(uploadedDocs).length > 0 ? 
-                    Object.keys(uploadedDocs).map(doc => 
-                        `<p style="margin: 5px 0;">✓ ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}</p>`
-                    ).join('') : 
+                    Object.keys(uploadedDocs).map(doc => {
+                        const evidence = evidenceDetails[doc];
+                        return `
+                            <div style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #4caf50;">
+                                <p style="margin: 0 0 10px 0;"><strong>✓ ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}</strong></p>
+                                ${evidence ? `
+                                    <p style="margin: 5px 0; font-size: 14px; color: #666;">File: ${evidence.fileName} (${evidence.fileSize}) - Uploaded: ${evidence.uploadDate}</p>
+                                    <p style="margin: 5px 0; font-size: 14px; line-height: 1.4;">${evidence.description}</p>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('') : 
                     '<p style="color: #666; font-style: italic;">Supporting documents to be submitted separately with this filing</p>'
                 }
             </div>
@@ -859,7 +893,7 @@ function generateFRCFiling() {
     document.getElementById('frcFilingContent').innerHTML = filingContent;
     document.getElementById('frcFilingOutput').style.display = 'block';
     
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
     updateProgress();
     
     // Scroll to the generated filing
@@ -899,7 +933,7 @@ function addTimelineEvent() {
     renderTimeline();
     document.getElementById('eventDate').value = '';
     document.getElementById('eventDescription').value = '';
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
     updateProgress();
 }
 
@@ -917,18 +951,41 @@ function renderTimeline() {
 function removeTimelineEvent(index) {
     timelineEvents.splice(index, 1);
     renderTimeline();
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
     updateProgress();
 }
 
 function updateDocStatus(docType) {
-    const statusElement = document.getElementById(docType + '-status');
-    statusElement.textContent = 'Uploaded';
-    statusElement.classList.remove('status-needed');
-    statusElement.classList.add('status-uploaded');
-    uploadedDocs[docType] = true;
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
-    updateProgress();
+    const fileInput = document.getElementById(docType + '-file');
+    const file = fileInput.files[0];
+    
+    if (file) {
+        const statusElement = document.getElementById(docType + '-status');
+        statusElement.textContent = 'Uploaded';
+        statusElement.classList.remove('status-needed');
+        statusElement.classList.add('status-uploaded');
+        uploadedDocs[docType] = true;
+        
+        // Store evidence details
+        evidenceDetails[docType] = {
+            fileName: file.name,
+            fileSize: (file.size / 1024).toFixed(1) + ' KB',
+            uploadDate: new Date().toLocaleDateString(),
+            description: getDocumentDescription(docType)
+        };
+        
+        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+        updateProgress();
+    }
+}
+
+function getDocumentDescription(docType) {
+    const descriptions = {
+        'lease': 'Current lease agreement showing existing rent terms and conditions',
+        'notice': 'Official rent increase notice from landlord specifying new amount and effective date',
+        'income': 'Income documentation supporting financial hardship analysis and affordability calculations'
+    };
+    return descriptions[docType] || 'Supporting documentation for FRC case';
 }
 
 function searchComparableRents() {
@@ -991,20 +1048,39 @@ function searchComparableRents() {
                 </div>
             </div>
 
-            <h4>Sample Comparable Properties</h4>
-            <div style="margin: 15px 0;">
-                ${comparables.map(prop => `
-                    <div class="document-item" style="margin: 8px 0;">
-                        <div>
-                            <strong>${prop.address}</strong>
-                            <p>${prop.bedrooms === 0 ? 'Studio' : prop.bedrooms + ' bedroom'} ${propertyType} - ${prop.distance} miles away</p>
+            ${vsMarket > 0 ? `
+                <h4>Comparable Properties Supporting Your Case</h4>
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Only showing properties with lower rents that support your argument:</p>
+                <div style="margin: 15px 0;">
+                    ${comparables.filter(prop => prop.rent < proposedRent).map(prop => `
+                        <div class="document-item" style="margin: 8px 0;">
+                            <div>
+                                <strong>${prop.address}</strong>
+                                <p>${prop.bedrooms === 0 ? 'Studio' : prop.bedrooms + ' bedroom'} ${propertyType} - ${prop.distance} miles away</p>
+                            </div>
+                            <div>
+                                <strong style="color: #2e7d32;">$${prop.rent}/month</strong>
+                                <p style="font-size: 12px; color: #666; margin: 0;">$${(proposedRent - prop.rent).toFixed(0)} less than proposed</p>
+                            </div>
                         </div>
-                        <div>
-                            <strong style="color: ${prop.rent > proposedRent ? '#c62828' : '#2e7d32'};">$${prop.rent}/month</strong>
+                    `).join('')}
+                </div>
+            ` : `
+                <h4>All Comparable Properties</h4>
+                <div style="margin: 15px 0;">
+                    ${comparables.map(prop => `
+                        <div class="document-item" style="margin: 8px 0;">
+                            <div>
+                                <strong>${prop.address}</strong>
+                                <p>${prop.bedrooms === 0 ? 'Studio' : prop.bedrooms + ' bedroom'} ${propertyType} - ${prop.distance} miles away</p>
+                            </div>
+                            <div>
+                                <strong style="color: ${prop.rent > proposedRent ? '#c62828' : '#2e7d32'};">$${prop.rent}/month</strong>
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
-            </div>
+                    `).join('')}
+                </div>
+            `}
 
             ${vsMarket > 10 ? `
                 <div class="alert" style="background: #ffebee; border-color: #c62828;">
@@ -1032,8 +1108,8 @@ function searchComparableRents() {
         `;
 
         resultsDiv.style.display = 'block';
-        currentMarketData = { marketRent, vsMarket, propertyType, bedrooms };
-        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+        currentMarketData = { marketRent, vsMarket, propertyType, bedrooms, comparables };
+        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
         updateProgress();
 
         button.textContent = '🔍 Find Comparable Properties';
@@ -1069,7 +1145,154 @@ function updateProgress() {
 }
 
 function downloadFRCFilingPDF() {
-    alert('PDF download feature coming soon! For now, please use the print option which allows you to save as PDF from your browser.');
+    try {
+        if (!window.jsPDF) {
+            alert('PDF library not loaded. Please use the print option instead.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Set up PDF styling
+        const margin = 20;
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        let yPosition = margin;
+        
+        // Helper function to add text with word wrapping
+        function addText(text, fontSize = 10, fontStyle = 'normal', color = [0, 0, 0]) {
+            doc.setFontSize(fontSize);
+            doc.setFont('helvetica', fontStyle);
+            doc.setTextColor(color[0], color[1], color[2]);
+            
+            const maxWidth = pageWidth - (margin * 2);
+            const lines = doc.splitTextToSize(text, maxWidth);
+            
+            for (let line of lines) {
+                if (yPosition > pageHeight - 30) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                doc.text(line, margin, yPosition);
+                yPosition += fontSize * 0.5;
+            }
+            yPosition += 5;
+        }
+        
+        // Helper function to add headings
+        function addHeading(text, level = 1) {
+            yPosition += 5;
+            const fontSize = level === 1 ? 16 : 12;
+            addText(text, fontSize, 'bold', [25, 118, 210]);
+            yPosition += 3;
+        }
+        
+        // Generate PDF content
+        addHeading('FAIR RENT COMMISSION FILING', 1);
+        addText(`Case: ${caseData.tenantName || '[Tenant Name]'} vs. ${caseData.landlordName || '[Landlord Name]'}`, 12, 'bold');
+        addText(`Property: ${caseData.propertyAddress || '[Property Address]'}`);
+        addText(`Filing Date: ${new Date().toLocaleDateString()}`);
+        
+        addHeading('I. CASE DETAILS & SUMMARY', 2);
+        addText(`Tenant: ${caseData.tenantName || '[Name]'}`);
+        addText(`Property Address: ${caseData.propertyAddress || '[Address]'}`);
+        addText(`Landlord/Manager: ${caseData.landlordName || '[Name]'}`);
+        addText(`Case Type: ${caseData.caseType ? caseData.caseType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '[Type]'}`);
+        addText(`Current Monthly Rent: $${caseData.currentRent || '[Amount]'}`);
+        addText(`Proposed Monthly Rent: $${caseData.proposedRent || '[Amount]'}`);
+        
+        const increaseAmount = parseFloat(caseData.proposedRent) - parseFloat(caseData.currentRent);
+        const increasePercent = ((increaseAmount / parseFloat(caseData.currentRent)) * 100).toFixed(1);
+        addText(`Increase Amount: $${increaseAmount > 0 ? increaseAmount.toFixed(2) : '[Amount]'} (${increasePercent}%)`);
+        addText(`Effective Date: ${caseData.rentIncreaseDate || '[Date]'}`);
+        
+        addText(`Summary of Challenge: ${caseData.caseSummary || 'Tenant challenges this rent increase as excessive and unreasonable.'}`);
+        
+        addHeading('II. FINANCIAL HARDSHIP ANALYSIS', 2);
+        if (caseData.monthlyIncome && caseData.currentRent && caseData.proposedRent) {
+            const currentBurden = ((parseFloat(caseData.currentRent) / parseFloat(caseData.monthlyIncome)) * 100).toFixed(1);
+            const proposedBurden = ((parseFloat(caseData.proposedRent) / parseFloat(caseData.monthlyIncome)) * 100).toFixed(1);
+            const exceedsAffordable = proposedBurden > 30;
+            
+            addText(`The tenant currently allocates ${currentBurden}% of household income toward rent. The proposed increase would raise this burden to ${proposedBurden}%, ${exceedsAffordable ? 'exceeding HUD affordability standards (30% maximum) and creating substantial financial hardship' : 'representing a significant increase in housing costs'}.`);
+        } else {
+            addText('Financial analysis not available - please complete financial impact section.');
+        }
+        
+        addHeading('III. MARKET ANALYSIS', 2);
+        if (currentMarketData) {
+            const vsMarket = currentMarketData.vsMarket || 0;
+            addText(`Market analysis shows the proposed rent is ${vsMarket > 0 ? vsMarket + '% above' : Math.abs(vsMarket) + '% below'} market average.`);
+            
+            if (vsMarket > 0 && currentMarketData.comparables) {
+                const supportingProps = currentMarketData.comparables.filter(prop => prop.rent < parseFloat(caseData.proposedRent));
+                if (supportingProps.length > 0) {
+                    addText('Comparable Properties Supporting This Case:', 10, 'bold');
+                    supportingProps.forEach(prop => {
+                        addText(`• ${prop.address}: $${prop.rent}/month (${prop.bedrooms === 0 ? 'Studio' : prop.bedrooms + ' bedroom'}) - $${(parseFloat(caseData.proposedRent) - prop.rent).toFixed(0)} less than proposed`);
+                    });
+                }
+            }
+        } else {
+            addText('Market analysis not completed.');
+        }
+        
+        if (timelineEvents.length > 0) {
+            addHeading('IV. CHRONOLOGY OF EVENTS', 2);
+            timelineEvents.forEach(event => {
+                addText(`${new Date(event.date).toLocaleDateString()}: ${event.description}`);
+            });
+        }
+        
+        addHeading(`${timelineEvents.length > 0 ? 'V' : 'IV'}. RELIEF REQUESTED`, 2);
+        addText(`Primary Relief Sought: ${caseData.reliefRequested ? caseData.reliefRequested.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Relief not specified'}`, 10, 'bold');
+        
+        if (caseData.additionalArguments) {
+            addText(`Additional Arguments: ${caseData.additionalArguments}`);
+        }
+        
+        addHeading(`${timelineEvents.length > 0 ? 'VI' : 'V'}. SUPPORTING EVIDENCE`, 2);
+        if (Object.keys(uploadedDocs).length > 0) {
+            Object.keys(uploadedDocs).forEach(doc => {
+                const evidence = evidenceDetails[doc];
+                addText(`✓ ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}`, 10, 'bold');
+                if (evidence) {
+                    addText(`File: ${evidence.fileName} (${evidence.fileSize}) - Uploaded: ${evidence.uploadDate}`, 8);
+                    addText(`${evidence.description}`, 8);
+                }
+            });
+        } else {
+            addText('Supporting documents to be submitted separately with this filing.');
+        }
+        
+        // Certification
+        yPosition += 10;
+        addText('CERTIFICATION', 12, 'bold');
+        addText('I certify under penalty of perjury that the information provided in this filing is true and accurate to the best of my knowledge.');
+        addText(`Respectfully submitted on ${new Date().toLocaleDateString()}`, 10, 'bold');
+        
+        yPosition += 20;
+        addText('_________________________________');
+        addText(`${caseData.tenantName || '[Tenant Signature]'}`, 10, 'bold');
+        addText('Tenant/Petitioner', 8);
+        
+        // Generate filename and save
+        const tenantName = caseData.tenantName || 'Tenant';
+        const cleanName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
+        const filename = `FRC_Filing_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`;
+        
+        doc.save(filename);
+        
+        // Show success message
+        setTimeout(() => {
+            alert(`✅ PDF generated successfully!\n\nFile: ${filename}\n\nThe PDF includes all your case information and is ready for submission to the Fair Rent Commission.`);
+        }, 500);
+        
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        alert('Error generating PDF. Please try the print option instead, which allows you to save as PDF from your browser.');
+    }
 }
 
 function printFRCFiling() {
@@ -1130,6 +1353,7 @@ function loadFromLocalStorage() {
             caseData = data.caseData || {};
             timelineEvents = data.timelineEvents || [];
             uploadedDocs = data.uploadedDocs || {};
+            evidenceDetails = data.evidenceDetails || {};
             currentMarketData = data.currentMarketData || null;
             
             // Restore form values
@@ -1178,9 +1402,9 @@ function setupAutoSave() {
     inputs.forEach(inputId => {
         const element = document.getElementById(inputId);
         if (element) {
-            element.addEventListener('input', function() {
-                caseData[inputId] = this.value;
-                localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, currentMarketData}));
+                    element.addEventListener('input', function() {
+            caseData[inputId] = this.value;
+            localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
                 
                 // Auto-update financial analysis if relevant fields change
                 if (['monthlyIncome', 'currentRent', 'proposedRent', 'otherMajorExpenses'].includes(inputId)) {
