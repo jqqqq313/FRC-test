@@ -247,7 +247,17 @@
         color: #c62828;
     }
 
-    .status-uploaded {
+    .status-recommended {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .status-optional {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-ready {
         background: #e8f5e8;
         color: #2e7d32;
     }
@@ -413,44 +423,90 @@
                 <div id="evidence" class="section">
                     <h2>Evidence & Timeline</h2>
                     <div class="alert">
-                        <strong>Supporting Evidence:</strong> Upload key documents and create a timeline of events for your FRC filing.
+                        <strong>Supporting Evidence:</strong> Prepare your document checklist and create a timeline of events for your FRC filing.
                     </div>
                     
-                    <h3>Required Documents</h3>
+                    <h3>Document Preparation Checklist</h3>
+                    <p>Gather these documents to submit with your FRC filing. Check off items as you collect them:</p>
+                    
                     <div class="document-list">
                         <div class="document-item">
                             <div>
-                                <strong>Current Lease Agreement</strong>
-                                <p>Shows current rent terms and lease conditions</p>
+                                <input type="checkbox" id="lease-ready" onchange="updateDocStatus('lease')" style="margin-right: 15px; transform: scale(1.2);">
+                                <div style="flex: 1;">
+                                    <strong>Current Lease Agreement</strong>
+                                    <p>Shows current rent terms and lease conditions</p>
+                                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">
+                                        <strong>What to include:</strong> Signed lease with rent amount, lease term, landlord/tenant names
+                                    </p>
+                                </div>
                             </div>
                             <div>
                                 <span class="status-badge status-needed" id="lease-status">Required</span>
-                                <input type="file" id="lease-file" style="display: none;" onchange="updateDocStatus('lease')" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                                <button class="btn" onclick="document.getElementById('lease-file').click()">Upload</button>
                             </div>
                         </div>
                         
                         <div class="document-item">
                             <div>
-                                <strong>Rent Increase Notice</strong>
-                                <p>Official notice from landlord about the rent increase</p>
+                                <input type="checkbox" id="notice-ready" onchange="updateDocStatus('notice')" style="margin-right: 15px; transform: scale(1.2);">
+                                <div style="flex: 1;">
+                                    <strong>Rent Increase Notice</strong>
+                                    <p>Official notice from landlord about the rent increase</p>
+                                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">
+                                        <strong>What to include:</strong> Original notice with new rent amount, effective date, landlord signature
+                                    </p>
+                                </div>
                             </div>
                             <div>
                                 <span class="status-badge status-needed" id="notice-status">Required</span>
-                                <input type="file" id="notice-file" style="display: none;" onchange="updateDocStatus('notice')" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                                <button class="btn" onclick="document.getElementById('notice-file').click()">Upload</button>
                             </div>
                         </div>
                         
                         <div class="document-item">
                             <div>
-                                <strong>Proof of Income</strong>
-                                <p>Pay stubs, benefits statements, or tax returns</p>
+                                <input type="checkbox" id="income-ready" onchange="updateDocStatus('income')" style="margin-right: 15px; transform: scale(1.2);">
+                                <div style="flex: 1;">
+                                    <strong>Proof of Income</strong>
+                                    <p>Documentation supporting your financial hardship analysis</p>
+                                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">
+                                        <strong>Options:</strong> Recent pay stubs, benefits statements, tax returns, Social Security statements
+                                    </p>
+                                </div>
                             </div>
                             <div>
-                                <span class="status-badge status-needed" id="income-status">Recommended</span>
-                                <input type="file" id="income-file" style="display: none;" onchange="updateDocStatus('income')" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                                <button class="btn" onclick="document.getElementById('income-file').click()">Upload</button>
+                                <span class="status-badge status-recommended" id="income-status">Recommended</span>
+                            </div>
+                        </div>
+                        
+                        <div class="document-item">
+                            <div>
+                                <input type="checkbox" id="comparable-ready" onchange="updateDocStatus('comparable')" style="margin-right: 15px; transform: scale(1.2);">
+                                <div style="flex: 1;">
+                                    <strong>Comparable Rent Documentation</strong>
+                                    <p>Evidence of similar properties with lower rents</p>
+                                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">
+                                        <strong>Examples:</strong> Rental listings, property manager quotes, real estate websites screenshots
+                                    </p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge status-optional" id="comparable-status">Optional</span>
+                            </div>
+                        </div>
+                        
+                        <div class="document-item">
+                            <div>
+                                <input type="checkbox" id="communications-ready" onchange="updateDocStatus('communications')" style="margin-right: 15px; transform: scale(1.2);">
+                                <div style="flex: 1;">
+                                    <strong>Communication Records</strong>
+                                    <p>Correspondence with landlord about the rent increase</p>
+                                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">
+                                        <strong>Include:</strong> Emails, letters, text messages, notes from conversations
+                                    </p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge status-optional" id="communications-status">Optional</span>
                             </div>
                         </div>
                     </div>
@@ -641,8 +697,7 @@
 <script>
 let caseData = {};
 let timelineEvents = [];
-let uploadedDocs = {};
-let evidenceDetails = {};
+let documentsReady = {};
 let currentMarketData = null;
 
 function saveBasics() {
@@ -655,7 +710,7 @@ function saveBasics() {
     caseData.caseType = document.getElementById('caseType').value;
     caseData.caseSummary = document.getElementById('caseSummary').value;
     
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
     alert('Case information saved successfully!');
     updateProgress();
     showSection('financial');
@@ -708,7 +763,7 @@ function analyzeFinancialImpact() {
     `;
     
     document.getElementById('financialAnalysisResults').style.display = 'block';
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
     updateProgress();
 }
 
@@ -853,28 +908,25 @@ These comparable properties demonstrate that similar units in the area rent for 
         </div>
 
         <div style="margin-bottom: 25px;">
-            <h4 style="color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 5px;">${timelineEvents.length > 0 ? 'VI' : 'V'}. SUPPORTING EVIDENCE</h4>
-            <p style="margin: 15px 0;">The following evidence is submitted in support of this filing:</p>
+            <h4 style="color: #1976d2; border-bottom: 2px solid #1976d2; padding-bottom: 5px;">${timelineEvents.length > 0 ? 'VI' : 'V'}. SUPPORTING EVIDENCE TO BE SUBMITTED</h4>
+            <p style="margin: 15px 0;">The following supporting documents will be submitted with this filing:</p>
             <div style="margin: 15px 0;">
-                ${Object.keys(uploadedDocs).length > 0 ? 
-                    Object.keys(uploadedDocs).map(doc => {
-                        const evidence = evidenceDetails[doc];
+                ${Object.keys(documentsReady).some(doc => documentsReady[doc]) ? 
+                    Object.keys(documentsReady).filter(doc => documentsReady[doc]).map(docType => {
                         return `
                             <div style="margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #4caf50;">
-                                <p style="margin: 0 0 10px 0;"><strong>✓ ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}</strong></p>
-                                ${evidence ? `
-                                    <p style="margin: 5px 0; font-size: 14px; color: #666;">File: ${evidence.fileName} (${evidence.fileSize}) - Uploaded: ${evidence.uploadDate}</p>
-                                    <p style="margin: 5px 0; font-size: 14px; line-height: 1.4;">${evidence.description}</p>
-                                ` : ''}
+                                <p style="margin: 0 0 10px 0;"><strong>✓ ${docType.charAt(0).toUpperCase() + docType.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}</strong></p>
+                                <p style="margin: 5px 0; font-size: 14px; line-height: 1.4; color: #666;">${getDocumentRequirements(docType)}</p>
                             </div>
                         `;
                     }).join('') : 
-                    '<p style="color: #666; font-style: italic;">Supporting documents to be submitted separately with this filing</p>'
+                    '<p style="color: #666; font-style: italic;">No documents marked as ready in checklist - please review the evidence section</p>'
                 }
             </div>
             
             <div style="margin-top: 15px; padding: 15px; background: #e8f4ff; border-radius: 5px; border-left: 4px solid #2196f3;">
-                <p style="margin: 0; font-size: 14px; line-height: 1.5;"><strong>Note:</strong> All supporting documentation referenced in this filing will be provided to the Commission as attachments or separate submissions in accordance with Fair Rent Commission procedures.</p>
+                <p style="margin: 0 0 10px 0; font-size: 14px; line-height: 1.5;"><strong>Submission Instructions:</strong></p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.5;">All documents marked as ready above must be gathered and submitted as physical attachments or uploaded files according to Fair Rent Commission procedures. This filing serves as your formal petition and should be accompanied by the supporting evidence listed.</p>
             </div>
         </div>
 
@@ -893,7 +945,7 @@ These comparable properties demonstrate that similar units in the area rent for 
     document.getElementById('frcFilingContent').innerHTML = filingContent;
     document.getElementById('frcFilingOutput').style.display = 'block';
     
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
     updateProgress();
     
     // Scroll to the generated filing
@@ -933,7 +985,7 @@ function addTimelineEvent() {
     renderTimeline();
     document.getElementById('eventDate').value = '';
     document.getElementById('eventDescription').value = '';
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
     updateProgress();
 }
 
@@ -951,41 +1003,52 @@ function renderTimeline() {
 function removeTimelineEvent(index) {
     timelineEvents.splice(index, 1);
     renderTimeline();
-    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
     updateProgress();
 }
 
 function updateDocStatus(docType) {
-    const fileInput = document.getElementById(docType + '-file');
-    const file = fileInput.files[0];
+    const checkbox = document.getElementById(docType + '-ready');
+    const statusElement = document.getElementById(docType + '-status');
     
-    if (file) {
-        const statusElement = document.getElementById(docType + '-status');
-        statusElement.textContent = 'Uploaded';
-        statusElement.classList.remove('status-needed');
-        statusElement.classList.add('status-uploaded');
-        uploadedDocs[docType] = true;
-        
-        // Store evidence details
-        evidenceDetails[docType] = {
-            fileName: file.name,
-            fileSize: (file.size / 1024).toFixed(1) + ' KB',
-            uploadDate: new Date().toLocaleDateString(),
-            description: getDocumentDescription(docType)
-        };
-        
-        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
-        updateProgress();
+    if (checkbox.checked) {
+        statusElement.textContent = 'Ready';
+        statusElement.classList.remove('status-needed', 'status-recommended', 'status-optional');
+        statusElement.classList.add('status-ready');
+        documentsReady[docType] = true;
+    } else {
+        // Reset to original status
+        documentsReady[docType] = false;
+        const originalStatus = getOriginalStatus(docType);
+        statusElement.textContent = originalStatus.text;
+        statusElement.classList.remove('status-ready');
+        statusElement.classList.add(originalStatus.class);
     }
+    
+    localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
+    updateProgress();
 }
 
-function getDocumentDescription(docType) {
-    const descriptions = {
-        'lease': 'Current lease agreement showing existing rent terms and conditions',
-        'notice': 'Official rent increase notice from landlord specifying new amount and effective date',
-        'income': 'Income documentation supporting financial hardship analysis and affordability calculations'
+function getOriginalStatus(docType) {
+    const statuses = {
+        'lease': { text: 'Required', class: 'status-needed' },
+        'notice': { text: 'Required', class: 'status-needed' },
+        'income': { text: 'Recommended', class: 'status-recommended' },
+        'comparable': { text: 'Optional', class: 'status-optional' },
+        'communications': { text: 'Optional', class: 'status-optional' }
     };
-    return descriptions[docType] || 'Supporting documentation for FRC case';
+    return statuses[docType] || { text: 'Optional', class: 'status-optional' };
+}
+
+function getDocumentRequirements(docType) {
+    const requirements = {
+        'lease': 'Submit your signed lease agreement showing current rent amount, lease term, and all parties\' names',
+        'notice': 'Include the original rent increase notice with new rent amount, effective date, and landlord signature',
+        'income': 'Provide recent pay stubs, benefits statements, or tax returns to support financial hardship claims',
+        'comparable': 'Include rental listings, property manager quotes, or real estate website screenshots showing lower rents',
+        'communications': 'Submit emails, letters, text messages, or documented phone conversations with landlord'
+    };
+    return requirements[docType] || 'Supporting documentation for your FRC case';
 }
 
 function searchComparableRents() {
@@ -1109,7 +1172,7 @@ function searchComparableRents() {
 
         resultsDiv.style.display = 'block';
         currentMarketData = { marketRent, vsMarket, propertyType, bedrooms, comparables };
-        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+        localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
         updateProgress();
 
         button.textContent = '🔍 Find Comparable Properties';
@@ -1128,7 +1191,7 @@ function updateProgress() {
     if (caseData.monthlyIncome && document.getElementById('financialAnalysisResults').style.display === 'block') completed++;
     
     // Evidence/Timeline
-    if (Object.keys(uploadedDocs).length > 0 || timelineEvents.length > 0) completed++;
+    if (Object.keys(documentsReady).some(doc => documentsReady[doc]) || timelineEvents.length > 0) completed++;
     
     // Market analysis
     if (currentMarketData) completed++;
@@ -1252,18 +1315,16 @@ function downloadFRCFilingPDF() {
             addText(`Additional Arguments: ${caseData.additionalArguments}`);
         }
         
-        addHeading(`${timelineEvents.length > 0 ? 'VI' : 'V'}. SUPPORTING EVIDENCE`, 2);
-        if (Object.keys(uploadedDocs).length > 0) {
-            Object.keys(uploadedDocs).forEach(doc => {
-                const evidence = evidenceDetails[doc];
-                addText(`✓ ${doc.charAt(0).toUpperCase() + doc.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}`, 10, 'bold');
-                if (evidence) {
-                    addText(`File: ${evidence.fileName} (${evidence.fileSize}) - Uploaded: ${evidence.uploadDate}`, 8);
-                    addText(`${evidence.description}`, 8);
-                }
+        addHeading(`${timelineEvents.length > 0 ? 'VI' : 'V'}. SUPPORTING EVIDENCE TO BE SUBMITTED`, 2);
+        if (Object.keys(documentsReady).some(doc => documentsReady[doc])) {
+            Object.keys(documentsReady).filter(doc => documentsReady[doc]).forEach(docType => {
+                addText(`✓ ${docType.charAt(0).toUpperCase() + docType.slice(1).replace(/([A-Z])/g, ' $1').toLowerCase()}`, 10, 'bold');
+                addText(`${getDocumentRequirements(docType)}`, 8);
             });
+            addText('', 8);
+            addText('All documents listed above must be gathered and submitted as physical attachments with this filing.', 8);
         } else {
-            addText('Supporting documents to be submitted separately with this filing.');
+            addText('No documents marked as ready in checklist - please review the evidence section.');
         }
         
         // Certification
@@ -1352,8 +1413,7 @@ function loadFromLocalStorage() {
             const data = JSON.parse(saved);
             caseData = data.caseData || {};
             timelineEvents = data.timelineEvents || [];
-            uploadedDocs = data.uploadedDocs || {};
-            evidenceDetails = data.evidenceDetails || {};
+            documentsReady = data.documentsReady || {};
             currentMarketData = data.currentMarketData || null;
             
             // Restore form values
@@ -1362,14 +1422,18 @@ function loadFromLocalStorage() {
                 if (element) element.value = caseData[key];
             });
             
-            // Restore document status
-            Object.keys(uploadedDocs).forEach(docType => {
-                if (uploadedDocs[docType]) {
-                    const statusElement = document.getElementById(docType + '-status');
-                    if (statusElement) {
-                        statusElement.textContent = 'Uploaded';
-                        statusElement.classList.remove('status-needed');
-                        statusElement.classList.add('status-uploaded');
+            // Restore document checkbox status
+            Object.keys(documentsReady).forEach(docType => {
+                if (documentsReady[docType]) {
+                    const checkbox = document.getElementById(docType + '-ready');
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const statusElement = document.getElementById(docType + '-status');
+                        if (statusElement) {
+                            statusElement.textContent = 'Ready';
+                            statusElement.classList.remove('status-needed', 'status-recommended', 'status-optional');
+                            statusElement.classList.add('status-ready');
+                        }
                     }
                 }
             });
@@ -1404,7 +1468,7 @@ function setupAutoSave() {
         if (element) {
                     element.addEventListener('input', function() {
             caseData[inputId] = this.value;
-            localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, uploadedDocs, evidenceDetails, currentMarketData}));
+            localStorage.setItem('frcCaseData', JSON.stringify({caseData, timelineEvents, documentsReady, currentMarketData}));
                 
                 // Auto-update financial analysis if relevant fields change
                 if (['monthlyIncome', 'currentRent', 'proposedRent', 'otherMajorExpenses'].includes(inputId)) {
