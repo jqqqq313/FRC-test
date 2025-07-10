@@ -1,0 +1,40 @@
+{
+  "name": "frc-case-prep-tool",
+  "version": "4.0.0",
+  "description": "Connecticut Fair Rent Commission Case Preparation Tool - Professional filing assistance for tenant rent disputes",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'Static site - no build required'",
+    "deploy": "git push origin main"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jqqqq313/FRC-test.git"
+  },
+  "keywords": [
+    "fair-rent-commission",
+    "connecticut",
+    "tenant-rights",
+    "rent-control",
+    "legal-tools",
+    "housing",
+    "pdf-generation"
+  ],
+  "author": "FRC Case Prep Tool Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jqqqq313/FRC-test/issues"
+  },
+  "homepage": "https://jqqqq313.github.io/FRC-test",
+  "devDependencies": {
+    "serve": "^14.0.0"
+  },
+  "dependencies": {
+    "jspdf": "^2.5.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
